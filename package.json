@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/mlicciardi/nodejs-scraping-agenzia-entrate/issues"
   },
-  "homepage": "https://github.com/mlicciardi/nodejs-scraping-agenzia-entrate#readme"
+  "homepage": "https://github.com/mlicciardi/nodejs-scraping-agenzia-entrate#readme",
+  "dependencies": {
+    "lodash": "^4.17.11"
+  }
 }
