@@ -1,73 +1,96 @@
-const casper = require('casper').create();
+const _ = require('lodash');
+const c = require('casper').create();
 
 const uffici = [];
 
-casper.start('https://www1.agenziaentrate.gov.it/servizi/tassazioneattigiudiziari/registrazione.htm');
+c.start('https://www1.agenziaentrate.gov.it/servizi/tassazioneattigiudiziari/registrazione.htm');
 
-// casper.then(function() {
-//   while(this.evaluate(function () { return document.readyState != 'complete' && document.readyState != 'interactive'; })) {}
-// });
-
-casper.then(function() {
+c.then(function() {
   this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliufficio"]');
-});
-
-casper.then(function() {
   if (!this.exists('#ufficio') || !this.exists('#avanti')) {
     this.capture('capture.err.png');
     this.exit();
   }
 
-  var options =  this.evaluate(function() {
-    var select =  document.getElementById('ufficio');
-    if (!select) return '#ufficio not found';
+  _.each(this.evaluate(function() {
+    var selector =  document.querySelector('#ufficio');
+    if (!selector) return { err: ['#ufficio not found'] };
 
-    var options = select.children;
-    if (!options || !options.length) return '#ufficio has no children';
+    var children = selector.children;
+    if (!children || !children.length) return { err: ['#ufficio has no children'] };
 
-    return [].map.call(options, function(option) {
+    return [].map.call(children, function(option) {
       return { id: option.value, name: option.textContent.trim() };
     });
-  });
-
-  options.each(function(data) {
+  }), function(data) {
     uffici.push({
       id: data.id,
       name: data.id,
       enti: [],
     });
-  })
+  });
 });
 
-casper.run(
-  console.log(uffici.length)
-);
+c.then(function() {
+  var index = 0;
+  this.repeat(uffici.length, function() {
+    const id = uffici[index].id;
+    if (!id) {
+      ++index;
+    } else {
+      this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliufficio]');
 
-// const URL = 'https://www1.agenziaentrate.gov.it/servizi/tassazioneattigiudiziari/registrazione.htm';
+      this.evaluate(function() {
+        document.querySelector('#ufficio')
 
-// casper.start(URL);
+        var selector =  document.querySelector('#ufficio');
+        if (!selector) {
+          uffici[index].err.push('#ufficio not found while trying to iterate #ente');
+        }
 
-// casper.then(function() {
-//   this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliufficio"]');
-//   this.echo(this.getCurrentUrl());
-//   this.capture('screenshot.png');
+        var children = selector.children;
+        if (!children || !children.length) {
+          uffici[index].err.push('#ufficio has no children while trying to iterate #ente');
+        }
 
-//   this.echo(document.querySelector('#uffici'));
-// });
+        $('#ufficio').val(id).change();
+      });
 
-// casper.then(function() {
-//   this.click(this.querySelector('#avanti'));
-// });
+      this.click(document.querySelector('#avanti'));
 
-// casper.then(function() {
-//   this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliente]');
-//   this.echo(this.getCurrentUrl());
+      this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliente]');
+      if (!this.exists('#ente') || !this.exists('#avanti') || !this.exists('#gotass')) {
+        this.capture('capture.err._' + index +'_.png');
+        this.exit();
+      }
 
-//   this.echo(this.querySelector('#enti'));
-// });
+      _.each(this.evaluate(function() {
+        var selector =  document.getElementById('ente');
+        if (!selector) return { err: '#ente not found' };
 
-// casper.then(function() {
-//   this.click(this.querySelector('#avanti'));
-// });
+        var options = selector.children;
+        if (!options || !options.length) return { err: '#ente has no children' };
 
-// casper.run();
+        return [].map.call(options, function(option) {
+          return { id: option.value, name: option.textContent.trim() };
+        });
+      }), function(data) {
+        uffici[index].enti.push({
+          id: data.id,
+          name: data.id,
+        });
+      });
+
+      if (++index !== uffici.length) {
+        this.click(this.querySelector('#gotass'));
+      }
+    }
+  });
+});
+
+c.then(function() {
+  this.echo(JSON.stringify(uffici));
+  this.echo('Scraped ' + uffici.length + ' items.');
+});
+
+c.run();
