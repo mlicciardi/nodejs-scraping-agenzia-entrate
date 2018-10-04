@@ -6,6 +6,27 @@ const uffici = [];
 c.start('https://www1.agenziaentrate.gov.it/servizi/tassazioneattigiudiziari/registrazione.htm');
 
 c.then(function() {
+  this.echo(new Date().getSeconds() + '.' + new Date().getMilliseconds());
+  this.click('#avanti');
+  //
+  this.echo(
+    this.evaluate(function() {
+      require('utils').dump({ foo: $('#avanti') });
+      return $('#avanti').click();
+    })
+  );
+  //
+  this.echo(document.readyState);
+  while(this.evaluate(function () { return document.readyState != 'complete' })) {
+    this.echo('Waiting...');
+  }
+  this.echo(document.readyState);
+  this.echo(new Date().getSeconds() + '.' + new Date().getMilliseconds());
+
+  this.exit();
+});
+
+c.then(function() {
   this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliufficio"]');
   if (!this.exists('#ufficio') || !this.exists('#avanti')) {
     this.capture('capture.err.png');
@@ -38,8 +59,11 @@ c.then(function() {
     if (!id) {
       ++index;
     } else {
-      this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliufficio]');
+      var selector;
 
+      while(this.evaluate(function () { return document.readyState != 'complete' && document.readyState != 'interactive'; })) {}
+
+      this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliufficio]');
       this.evaluate(function() {
         document.querySelector('#ufficio')
 
@@ -56,10 +80,11 @@ c.then(function() {
         $('#ufficio').val(id).change();
       });
 
-      this.click(document.querySelector('#avanti'));
+      this.waitForSelector('#avanti');
+      this.click('#avanti');
 
       this.waitForSelector('form[action="/servizi/tassazioneattigiudiziari/registrazione.htm?action=scegliente]');
-      if (!this.exists('#ente') || !this.exists('#avanti') || !this.exists('#gotass')) {
+      if (!this.exists('#ente') || !this.exists('#gotass')) {
         this.capture('capture.err._' + index +'_.png');
         this.exit();
       }
@@ -81,8 +106,11 @@ c.then(function() {
         });
       });
 
+      this.echo(JSON.stringify(uffici[0]));
+
       if (++index !== uffici.length) {
-        this.click(this.querySelector('#gotass'));
+        this.waitForSelector('#gotass');
+        this.click('#gotass');
       }
     }
   });
